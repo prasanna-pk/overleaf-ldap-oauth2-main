@@ -1,0 +1,84 @@
+version: '3.7'
+networks:
+    overleaf-external:
+       name: webproxy
+       external: true
+    overleaf-local:
+       driver: bridge
+services:
+    web:
+        restart: always
+        #image: sharelatex/sharelatex
+        build: . 
+        container_name: overleaf_sharelatex
+        depends_on:
+            mongo:
+                condition: service_started
+            redis:
+                condition: service_started
+        links:
+            - mongo
+            - redis
+        networks:
+            - "overleaf-local"
+            - "overleaf-external"
+        volumes:
+            - ./sharelatex_data:/var/lib/sharelatex
+            - ./sharelatex_packages:/usr/local/texlive
+        environment:
+            SHARELATEX_APP_NAME: Garden # change to custom name
+            SHARELATEX_MONGO_URL: mongodb://mongo/sharelatex
+
+            SHARELATEX_REDIS_HOST: redis
+            REDIS_HOST: redis
+
+            ENABLED_LINKED_FILE_TYPES: 'url,project_file'
+
+            # Enables Thumbnail generation using ImageMagick
+            ENABLE_CONVERSIONS: 'true'
+            # Disables email confirmation requirement
+            EMAIL_CONFIRMATION_DISABLED: 'true'
+
+            SHARELATEX_SITE_URL: https://test.com
+            SHARELATEX_NAV_TITLE: Garden
+            SHARELATEX_ADMIN_EMAIL: test@test.house
+
+            SHARELATEX_EMAIL_FROM_ADDRESS: "noreply@test.com" # change email
+
+            SHARELATEX_EMAIL_SMTP_HOST: test.com
+            SHARELATEX_EMAIL_SMTP_PORT: 465
+            SHARELATEX_EMAIL_SMTP_SECURE: 'true'
+            SHARELATEX_EMAIL_SMTP_USER: noreply@test.com
+            SHARELATEX_EMAIL_SMTP_PASS: password
+            SHARELATEX_EMAIL_SMTP_TLS_REJECT_UNAUTH: 'true'
+            SHARELATEX_EMAIL_SMTP_IGNORE_TLS: 'false'
+            # SHARELATEX_CUSTOM_EMAIL_FOOTER: "This system is run by department x"
+
+            SHARELATEX_ALLOW_ANONYMOUS_READ_AND_WRITE_SHARING: 'true'
+            SHARELATEX_ALLOW_PUBLIC_ACCESS: 'true'
+
+            ## This settings will work only with patched overleaf or pro version maybe?
+            #ALLOW_EMAIL_LOGIN: 'true'
+            OAUTH_CLIENT_ID: someidstring
+            OAUTH_CLIENT_SECRET: someotherstring
+            OAUTH_AUTH_URL: https://test.com/application/o/authorize/
+            OAUTH_ACCESS_URL: https://test.com/application/o/token/
+            OAUTH_USER_URL: https://test.com/application/o/userinfo/
+        ports:
+        - "80:80"
+    mongo:
+        restart: always
+        image: mongo
+        container_name: overleaf_mongo
+        networks:
+            - "overleaf-local"
+        volumes:
+            - ./mongo_data:/data/db
+    redis:
+        restart: always
+        image: redis:5
+        container_name: overleaf_redis
+        networks: 
+            - "overleaf-local"
+        volumes:
+            - ./redis_data:/data
